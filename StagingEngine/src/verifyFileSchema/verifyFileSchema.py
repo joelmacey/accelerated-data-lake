@@ -2,11 +2,13 @@ import csv
 import json
 import re
 import traceback
+import io
 
 import boto3
 from jsonschema import validate
 from jsonschema.exceptions import ValidationError
 
+import pandas as pd
 import csvvalidator
 
 
@@ -56,7 +58,7 @@ def _verify_file_schema(event, context):
     key = event['fileDetails']['key']
     file_settings = event['fileSettings']
     file_type = event["fileType"]
-
+    
     if 'schema' in event and event['schema'] is not None:
         if 'fileFormat' in file_settings:
             file_content = _load_object_content(bucket, key)
@@ -73,6 +75,58 @@ def _verify_file_schema(event, context):
         else:
             print("Filetype: {} has no defined fileFormat so no "
                   " verification will take place.".format(file_type))
+    elif 'glue' in event and event['glue'] is not None:
+        # Retrieve data types from the file
+        s3_key = f's3://{bucket}/{key}'
+
+        if file_settings['fileFormat'] == 'csv':
+            separator = ','
+        elif file_settings['fileFormat'] == 'tsv':
+            separator = '\t'
+        else:
+            separator = ',' # default to comma
+        df = pd.read_csv(s3_key,sep=separator,header=0)
+        csv_datatype_list = []
+        for dtype in df.dtypes.iteritems():
+            if dtype[1] == 'object':
+                csvdtype = 'string'
+            elif dtype[1] == 'int64':
+                csvdtype = 'int'
+            elif dtype[1] == 'float64':
+                csvdtype = 'float'
+            elif dtype[1] == 'bool':
+                csvdtype = 'boolean'
+            elif dtype[1] == 'datetime64':
+                csvdtype = 'date'
+            else:
+                csvdtype = None
+            csv_datatype_list.append(csvdtype)
+        
+        # Retrieve data types from the glue table
+        glue_datatype_list = []
+        response = _get_glue_table(event['glue']['database'],event['glue']['table'])
+        for i in response['Table']['StorageDescriptor']['Columns']:
+            if i['Type'] == 'int' or i['Type'] == 'bigint' or i['Type'] == 'smallint' or i['Type'] == 'tinyint' or i['Type'] == 'binary':
+                gluedtype = 'int'
+            elif i['Type'] == 'boolean':
+                gluedtype = 'boolean'
+            elif i['Type'] == 'char' or i['Type'] == 'string' or i['Type'] == 'varchar' or i['Type'] == 'interval':
+                gluedtype = 'string'
+            elif i['Type'] == 'date' or i['Type'] == 'timestamp':
+                gluedtype = 'date'
+            elif i['Type'] == 'decimal' or i['Type'] == 'double' or i['Type'] == 'float':
+                gluedtype = 'float'
+            else:
+                gluedtype = None
+            glue_datatype_list.append(gluedtype)
+        for i in range(0, len(glue_datatype_list)):
+            if glue_datatype_list[i] == csv_datatype_list[i]:
+                pass
+            elif glue_datatype_list[i] != csv_datatype_list[i] and glue_datatype_list[i] == 'string': # Overwrite to allow values to equal strings
+                pass
+            else:
+                raise VerifyFileSchemaException(
+                    "Data type in the csv for entry {} is equal to {} expected {}".format(i,csv_datatype_list[i], glue_datatype_list[i]))
     else:
         print("Filetype: {} has no defined schema so no "
               " verification will take place.".format(file_type))
@@ -168,3 +222,13 @@ def _load_object_content(bucket, key):
     '''
     s3_object = s3.Object(bucket, key)
     return s3_object.get()["Body"].read().decode('utf-8')
+
+def _get_glue_table(database, table):
+    client = boto3.client('glue')
+    
+    response = client.get_table(
+        DatabaseName=database,
+        Name=table
+    )
+
+    return response

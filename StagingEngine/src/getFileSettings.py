@@ -73,7 +73,13 @@ def attach_file_settings_to_event(event, context):
     schema = item['schema'] \
         if 'schema' in item \
         else None
+    
+    glue = item['glue'] \
+        if 'glue' in item \
+        else None
+    event.update({'glue': glue})
     event.update({'schema': schema})
+    
     event.update({'fileSettings': item['fileSettings']})
     event.update({'requiredMetadata': item['metadata']})
     event.update({'requiredTags': item['tags']})

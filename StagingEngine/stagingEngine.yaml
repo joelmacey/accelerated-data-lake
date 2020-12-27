@@ -13,6 +13,7 @@ Resources:
   LambdaExecutionRole:
     Type: "AWS::IAM::Role"
     Properties:
+      RoleName: !Sub "${EnvironmentPrefix}staging-engine-role"
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -137,11 +138,19 @@ Resources:
                 Action:
                   - logs:*
                 Resource: "*"                              
-
+        - PolicyName: GlueAccess
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - glue:GetTable
+                Resource: "*"              
   # SAM Serverless (Lambda) functions
   StartFileProcessing:
     Type: 'AWS::Serverless::Function'
     Properties:
+      FunctionName: !Sub "${EnvironmentPrefix}start-file-processing"
       Handler: startFileProcessing.lambda_handler
       Runtime: python3.6
       CodeUri: ./src/startFileProcessing.py
@@ -187,6 +196,7 @@ Resources:
   GetFileType:
     Type: 'AWS::Serverless::Function'
     Properties:
+      FunctionName: !Sub "${EnvironmentPrefix}get-file-type" 
       Handler: getFileType.lambda_handler
       Runtime: python3.6
       CodeUri: ./src/getFileType.py
@@ -202,6 +212,7 @@ Resources:
   GetFileSettings:
     Type: 'AWS::Serverless::Function'
     Properties:
+      FunctionName: !Sub "${EnvironmentPrefix}get-file-settings"
       Handler: getFileSettings.lambda_handler
       Runtime: python3.6
       CodeUri: ./src/getFileSettings.py
@@ -213,6 +224,7 @@ Resources:
   VerifyFileSchema:
     Type: 'AWS::Serverless::Function'
     Properties:
+      FunctionName: !Sub "${EnvironmentPrefix}verify-file-schema"
       Handler: verifyFileSchema.lambda_handler
       Runtime: python3.6
       CodeUri: ./src/verifyFileSchema
@@ -224,6 +236,7 @@ Resources:
   CalculateMetaDataForFile:
     Type: 'AWS::Serverless::Function'
     Properties:
+      FunctionName: !Sub "${EnvironmentPrefix}calculate-metadata-for-file"
       Handler: calculateMetaDataForFile.lambda_handler
       Runtime: python3.6
       CodeUri: ./src/calculateMetaDataForFile.py
@@ -235,6 +248,7 @@ Resources:
   CopyFileFromRawToStaging:
     Type: 'AWS::Serverless::Function'
     Properties:
+      FunctionName: !Sub "${EnvironmentPrefix}copy-file-from-raw-to-staging"  
       Handler: copyFileFromRawToStaging.lambda_handler
       Runtime: python3.6
       CodeUri: ./src/copyFileFromRawToStaging.py
@@ -247,6 +261,7 @@ Resources:
   DeleteRawFile:
     Type: 'AWS::Serverless::Function'
     Properties:
+      FunctionName: !Sub "${EnvironmentPrefix}delete-raw-file"
       Handler: deleteRawFile.lambda_handler
       Runtime: python3.6
       CodeUri: ./src/deleteRawFile.py
@@ -258,6 +273,7 @@ Resources:
   RecordSuccessfulStaging:
     Type: 'AWS::Serverless::Function'
     Properties:
+      FunctionName: !Sub "${EnvironmentPrefix}record-successful-staging"
       Handler: recordSuccessfulStaging.lambda_handler
       Runtime: python3.6
       CodeUri: ./src/recordSuccessfulStaging.py
@@ -275,6 +291,7 @@ Resources:
   CopyFileFromRawToFailed:
     Type: 'AWS::Serverless::Function'
     Properties:
+      FunctionName: !Sub "${EnvironmentPrefix}copy-file-from-raw-to-failed"
       Handler: copyFileFromRawToFailed.lambda_handler
       Runtime: python3.6
       CodeUri: ./src/copyFileFromRawToFailed.py
@@ -286,6 +303,7 @@ Resources:
   RecordFailedStaging:
     Type: 'AWS::Serverless::Function'
     Properties:
+      FunctionName: !Sub "${EnvironmentPrefix}record-failed-staging"
       Handler: recordFailedStaging.lambda_handler
       Runtime: python3.6
       CodeUri: ./src/recordFailedStaging.py

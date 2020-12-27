@@ -78,6 +78,8 @@ def record_successful_staging_in_data_catalog(event, context):
         if 'stagingPartitionSettings' in event['fileSettings']:
             staging_partition_settings = \
                 event['fileSettings']['stagingPartitionSettings']
+        else:
+            staging_partition_settings = None
 
         dynamodb_item = {
             'rawKey': raw_key,
